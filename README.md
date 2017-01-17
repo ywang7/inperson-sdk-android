@@ -24,9 +24,7 @@ Merchant merchant = Merchant.createMerchant(Environment.SANDBOX, passAuth);
 
 **Step 2.**	Create an EMV transaction.
 
-```
-EMVTransaction emvTransaction = EMVTransactionManager.createEMVTransaction(merchant, amount);
-```
+`EMVTransaction emvTransaction = EMVTransactionManager.createEMVTransaction(merchant, amount);`
 
 The merchant application must populate all the fields required by a standard payment transaction, as described in sample code, except the payment method. In addition, the _EMVTransactionType_ field must be set; the default value is GOODS.
 
@@ -95,7 +93,6 @@ EMVErrorCode {
 }
 ```
 
-
 ## Configuring the UI
 
 You can configure the UI of the In-Person SDK to better match the UI of the merchant application.  The merchant application must initialize these values only once when the application starts.  If no values are set or null is set for any of the parameters, the SDK defaults to its original theme.
@@ -135,25 +132,101 @@ The SDK supports the following transaction types that can be posted to Authorize
  * The credit card transaction types supported by the payment gateway.
  */
 public enum TransactionType {
-	AUTH_CAPTURE("AUTH_CAPTURE", "authCaptureTransaction", "profileTransAuthCapture"),
-	AUTH_ONLY("AUTH_ONLY", "authOnlyTransaction", "profileTransAuthOnly"),
-	PRIOR_AUTH_CAPTURE("PRIOR_AUTH_CAPTURE", "priorAuthCaptureTransaction", "profileTransPriorAuthCapture"),
-	CAPTURE_ONLY("CAPTURE_ONLY", "captureOnlyTransaction", "profileTransCaptureOnly"),
-	CREDIT("CREDIT", "refundTransaction", "profileTransRefund"),
-	UNLINKED_CREDIT("CREDIT", "refundTransaction", "profileTransRefund"),
-	VOID("VOID", "voidTransaction", "profileTransVoid"),
-	CASH("CASH", "cash", "profileTransCash");
+	AUTH_CAPTURE,
+	AUTH_ONLY,
+	PRIOR_AUTH_CAPTURE,
+	CAPTURE_ONLY,
+	CREDIT,
+	UNLINKED_CREDIT,
+	VOID,
+	CASH;
 }
 ```
 
-Code sample for posting non-EMV transaction:
+#### Code sample for posting non-EMV transaction using keyed in credit card information:
 
 ```
-net.authorize.aim.Transaction transaction = Transaction.createTransaction(merchant, TransactionType.AUTH_CAPTURE, new BigDecimal(1.0));
-net.authorize.aim.Result result = (net.authorize.aim.Result)merchant.postTransaction(transaction);
+//login to gateway to get valid session token
+PasswordAuthentication passAuth = PasswordAuthentication.createMerchantAuthentication("Username", "Password", "InpersonSDK-Android-test");
+Merchant testMerchant = Merchant.createMerchant(Environment.SANDBOX, passAuth);
+testMerchant.setDeviceType(DeviceType.WIRELESS_POS);
+testMerchant.setMarketType(MarketType.RETAIL);
+net.authorize.aim.Transaction transaction = Transaction.createTransaction(testMerchant, TransactionType.AUTH_CAPTURE, new BigDecimal(1.0));
+net.authorize.aim.Result result = (net.authorize.aim.Result)testMerchant.postTransaction(transaction);
+//if login succeeded, populate session token in the Merchant object
+SessionTokenAuthentication sessionTokenAuthentication = SessionTokenAuthentication.createMerchantAuthentication(testMerchant.getMerchantAuthentication().getName(), loginResult.getSessionToken(), "Test EMV Android");
+if ((loginResult.getSessionToken() != null) && (sessionTokenAuthentication != null)) {
+    testMerchant.setMerchantAuthentication(sessionTokenAuthentication);
+}
+
+//create new credit card object with required fields
+CreditCard creditCard = CreditCard.createCreditCard();
+creditCard.setCreditCardNumber("4111111111111111");
+creditCard.setExpirationMonth("11");
+creditCard.setExpirationYear("2020");
+creditCard.setCardCode("123");
+
+//create order item and add to transaction object
+Order order =  Order.createOrder();
+OrderItem oi =  OrderItem.createOrderItem();
+oi.setItemId("001");
+oi.setItemName("testItem");
+oi.setItemDescription("Goods");
+oi.setItemPrice(new BigDecimal(1.1));
+oi.setItemQuantity("1");
+oi.setItemTaxable(false);
+order.addOrderItem(oi);
+order.setTotalAmount(new BigDecimal(1.1));
+
+//post the transaction to Gateway
+net.authorize.aim.Result authCaptureResult = (net.authorize.aim.Result) testMerchant.postTransaction(authCaptureTransaction);
 ```
 to use other transaction type, simply replace `TransactionType.AUTH_CAPTURE` with the type of transaction you want.
-For Non-EMV transaction processing, there will be no UI provided by the SDK, client application is expected to build their own layout and display the response/error message properly.
+
+#### Code sample for posting non-EMV transaction using encrypted swiper data
+```
+//login to gateway to get valid session token
+PasswordAuthentication passAuth = PasswordAuthentication.createMerchantAuthentication("Username", "Password", "InpersonSDK-Android-test");
+Merchant testMerchant = Merchant.createMerchant(Environment.SANDBOX, passAuth);
+testMerchant.setDeviceType(DeviceType.WIRELESS_POS);
+testMerchant.setMarketType(MarketType.RETAIL);
+net.authorize.aim.Transaction transaction = Transaction.createTransaction(testMerchant, TransactionType.AUTH_CAPTURE, new BigDecimal(1.0));
+net.authorize.aim.Result result = (net.authorize.aim.Result)testMerchant.postTransaction(transaction);
+//if login succeeded, populate session token in the Merchant object
+SessionTokenAuthentication sessionTokenAuthentication = SessionTokenAuthentication.createMerchantAuthentication(testMerchant.getMerchantAuthentication().getName(), loginResult.getSessionToken(), "Test EMV Android");
+if ((loginResult.getSessionToken() != null) && (sessionTokenAuthentication != null)) {
+    testMerchant.setMerchantAuthentication(sessionTokenAuthentication);
+}
+
+//create new credit card object and populate it with the encrypted card data coming from the reader
+CreditCard creditCard = CreditCard.createCreditCard();
+creditCard.setCardPresenseType(net.authorize.data.creditcard.CreditCardPresenceType.CARD_PRESENT_ENCRYPTED);
+creditCard.getSwipperData().setMode(SwiperModeType.DATA);
+//the following field is the data converted into HEX string coming from the reader
+creditCard.getSwipperData().setEncryptedData(IDtechTestBlob);
+//the FID for the reader
+creditCard.getSwipperData().setDeviceInfo("4649443d4944544543482e556e694d61672e416e64726f69642e53646b7631");
+//the Encryption method used by the reader, should be TDES for IDTech
+creditCard.getSwipperData().setEncryptionAlgorithm(SwiperEncryptionAlgorithmType.TDES);
+
+//create order item and add to transaction object
+Order order =  Order.createOrder();
+OrderItem oi =  OrderItem.createOrderItem();
+oi.setItemId("001");
+oi.setItemName("testItem");
+oi.setItemDescription("Goods");
+oi.setItemPrice(new BigDecimal(1.1));
+oi.setItemQuantity("1");
+oi.setItemTaxable(false);
+order.addOrderItem(oi);
+order.setTotalAmount(new BigDecimal(1.1));
+
+//post the transaction to Gateway
+net.authorize.aim.Result authCaptureResult = (net.authorize.aim.Result) testMerchant.postTransaction(authCaptureTransaction);
+```
+
+
+_NOTE_ : For Non-EMV transaction processing, there will be no UI provided by the SDK, client application is expected to build their own layout and display the response/error message properly.
 
 Fore more details on the supported API call accepted by Authorize.Net gateway, please refer to our [Authorize.Net API Documentation](http://developer.authorize.net/api/reference/).
 
@@ -165,10 +238,9 @@ Field Order | Response Code | Response Reason Code | Text
 --- | --- | --- | ---
 3 | 2 | 355	| An error occurred during the parsing of the EMV data.
 3 | 2 | 356	| EMV-based transactions are not currently supported for this processor and card type.
-3 | 2 | 357	| Opaque Ddescriptor is required.
+3 | 2 | 357	| Opaque Descriptor is required.
 3 | 2 | 358	| EMV data is not supported with this transaction type.
 3 | 2 | 359	| EMV data is not supported with this market type.
 3 | 2 | 360	| An error occurred during the decryption of the EMV data.
 3 | 2 | 361	| The EMV version is invalid.
 3 | 2 | 362	| x_emv_version is required.
-
