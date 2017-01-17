@@ -1,22 +1,23 @@
-# Authorize.Net In-Person Android SDK Integration Guide 
+# Authorize.Net In-Person Android SDK Integration Guide
 
-The Authorize.Net Android In-Person SDK enables you to build point-of-sale Android applications that accept EMV payments. The merchantís application invokes this SDK to complete an EMV transaction. 
+The Authorize.Net Android In-Person SDK enables you to build point-of-sale Android applications that accept EMV payments. The merchantís application invokes this SDK to complete an EMV transaction.
 
-The SDK handles the complex EMV workflow and securely submits the EMV transaction to the Authorize.Net gateway for processing. The merchantís application never touches any EMV data at any time, simplifying PCI compliance.  
+The SDK handles the complex EMV workflow and securely submits the EMV transaction to the Authorize.Net gateway for processing. The merchantís application never touches any EMV data at any time, simplifying PCI compliance.
 
 ## Usage Workflow
 
-1.	Insert the card reader. 
-2.	Insert a card with an EMV chip. 
-3.	Select the Application, if prompted. If only a compatible application resides on the card, the application is selected automatically. 
-4.	Confirm amount. 
-5.	Do not remove card until the transaction is complete. 
+1.	Insert the card reader.
+2.	Insert a card with an EMV chip.
+3.	Select the Application, if prompted. If only a compatible application resides on the card, the application is selected automatically.
+4.	Confirm amount.
+5.	Do not remove card until the transaction is complete.
 6.	If at any time the user cancels the transaction, the EMV transaction is cancelled.
 
 ## Using the SDK to Create and Submit an EMV Transaction
 
-**Step 1.**	Import the _emvsdk.aar_ file as a library module and build. The merchant application must log in and initialize a valid Merchant object with _PasswordAuthentication_.
-
+**Step 1.**	Import the _emvsdk.aar_ file as a library module and build. The merchant application must log in and initialize a valid Merchant object with _PasswordAuthentication_. You may specify the environment to use in enum `Environment`.
+`PasswordAuthentication passAuth = PasswordAuthentication.createMerchantAuthentication("Username", "Password", "In-person-sdk-tests");
+Merchant merchant = Merchant.createMerchant(Environment.SANDBOX, passAuth);`
 **Step 2.**	Create an EMV transaction.
 
 `EMVTransaction emvTransaction = EMVTransactionManager.createEMVTransaction(merchant, amount);`
@@ -36,12 +37,12 @@ The merchant application must populate all the fields required by a standard pay
 `emvTransaction.setEmvTransactionType(EMVTransactionType.GOODS);`
 
 **Note:** Only GOODS, SERVICES, and PAYMENT are supported.
- 
+
 **Step 3.**	Submit the EMV transaction.
 
 `EMVTransactionManager.startEMVTransaction(EMVTransaction emvTransaction, final EMVTransactionListener emvTransactionListener, Context context)`
 
-`EMVTransactionListener` is the callback interface of the `EMVTransaction` object. It must be implemented by the merchant application. 
+`EMVTransactionListener` is the callback interface of the `EMVTransaction` object. It must be implemented by the merchant application.
 
     public interface EMVTransactionListener {
       void onEMVTransactionSuccessful(Result result);
@@ -85,33 +86,56 @@ EMVErrorCode {
 
 ## Configuring the UI
 
-You can configure the UI of the In-Person SDK to better match the UI of the merchant application.  The merchant application must initialize these values only once when the application starts.  If no values are set or null is set for any of the parameters, the SDK defaults to its original theme. 
+You can configure the UI of the In-Person SDK to better match the UI of the merchant application.  The merchant application must initialize these values only once when the application starts.  If no values are set or null is set for any of the parameters, the SDK defaults to its original theme.
 
 The merchant app can configure the following UI parameters:
 
-**SDK Font color:**  
+**SDK Font color:**
 `EmvSdkUISettings.setFontColorId(R.color.black);`
 
-**SDK Button font color:**  
+**SDK Button font color:**
 `EmvSdkUISettings.setButtonTextColor(R.color.font_green);`
 
-**SDK background color:**  
+**SDK background color:**
 `EmvSdkUISettings.setBackgroundColorId(R.color.light_blue);`
 
-**Banner/Top bar background color:**  
+**Banner/Top bar background color:**
 `EmvSdkUISettings.setBannerBackgroundColor(R.color.white);`
 
 For the color properties listed above, the merchant application must define color values and pass the color IDs to the In-Person SDK:
 
-**Banner/top bar image:**  
+**Banner/top bar image:**
 `EmvSdkUISettings.setLogoDrawableId(R.drawable.apple);`
 
 The merchant application must have a drawable file in the resource file. The drawable ID must be provided to the In-Person SDK.
 
-**SDK button color:**  
+**SDK button color:**
 `EmvSdkUISettings.setButtonDrawableId(R.drawable.button_material_style_custom);`
 
 The merchant application must define a drawable. SDK supports state list drawables also.  The merchant application must provide the drawable ID to the EMV SDK.
+
+## Non-EMV Transaction Processing
+
+The SDK supports the following transaction types that can be posted to Authorize.Net gateway:
+`/**
+ * The credit card transaction types supported by the payment gateway.
+ */
+public enum TransactionType {
+	AUTH_CAPTURE("AUTH_CAPTURE", "authCaptureTransaction", "profileTransAuthCapture"),
+	AUTH_ONLY("AUTH_ONLY", "authOnlyTransaction", "profileTransAuthOnly"),
+	PRIOR_AUTH_CAPTURE("PRIOR_AUTH_CAPTURE", "priorAuthCaptureTransaction", "profileTransPriorAuthCapture"),
+	CAPTURE_ONLY("CAPTURE_ONLY", "captureOnlyTransaction", "profileTransCaptureOnly"),
+	CREDIT("CREDIT", "refundTransaction", "profileTransRefund"),
+	UNLINKED_CREDIT("CREDIT", "refundTransaction", "profileTransRefund"),
+	VOID("VOID", "voidTransaction", "profileTransVoid"),
+	CASH("CASH", "cash", "profileTransCash");
+}`
+
+Code sample for posting non-EMV transaction:
+`net.authorize.aim.Transaction transaction = Transaction.createTransaction(merchant, TransactionType.AUTH_CAPTURE, new BigDecimal(1.0));
+net.authorize.aim.Result result = (net.authorize.aim.Result)merchant.postTransaction(transaction);
+`
+to use other transaction type, simply replace `TransactionType.AUTH_CAPTURE` with the type of transaction you want.
 
 ## Error Codes
 
@@ -127,4 +151,3 @@ Field Order | Response Code | Response Reason Code | Text
 3 | 2 | 360	| An error occurred during the decryption of the EMV data.
 3 | 2 | 361	| The EMV version is invalid.
 3 | 2 | 362	| x_emv_version is required.
-
