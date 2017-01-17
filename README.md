@@ -16,15 +16,22 @@ The SDK handles the complex EMV workflow and securely submits the EMV transactio
 ## Using the SDK to Create and Submit an EMV Transaction
 
 **Step 1.**	Import the _emvsdk.aar_ file as a library module and build. The merchant application must log in and initialize a valid Merchant object with _PasswordAuthentication_. You may specify the environment to use in enum `Environment`.
-`PasswordAuthentication passAuth = PasswordAuthentication.createMerchantAuthentication("Username", "Password", "In-person-sdk-tests");
-Merchant merchant = Merchant.createMerchant(Environment.SANDBOX, passAuth);`
+
+```
+PasswordAuthentication passAuth = PasswordAuthentication.createMerchantAuthentication("Username", "Password", "In-person-sdk-tests");
+Merchant merchant = Merchant.createMerchant(Environment.SANDBOX, passAuth);
+```
+
 **Step 2.**	Create an EMV transaction.
 
-`EMVTransaction emvTransaction = EMVTransactionManager.createEMVTransaction(merchant, amount);`
+```
+EMVTransaction emvTransaction = EMVTransactionManager.createEMVTransaction(merchant, amount);
+```
 
 The merchant application must populate all the fields required by a standard payment transaction, as described in sample code, except the payment method. In addition, the _EMVTransactionType_ field must be set; the default value is GOODS.
 
-`EMVTransactionType {
+```
+EMVTransactionType {
     GOODS(0),
     SERVICES(1),
     CASHBACK(2),
@@ -32,9 +39,11 @@ The merchant application must populate all the fields required by a standard pay
     TRANSFER(4),
     PAYMENT(5),
     REFUND(6);
-}`
+}
 
-`emvTransaction.setEmvTransactionType(EMVTransactionType.GOODS);`
+emvTransaction.setEmvTransactionType(EMVTransactionType.GOODS);
+```
+
 
 **Note:** Only GOODS, SERVICES, and PAYMENT are supported.
 
@@ -43,12 +52,13 @@ The merchant application must populate all the fields required by a standard pay
 `EMVTransactionManager.startEMVTransaction(EMVTransaction emvTransaction, final EMVTransactionListener emvTransactionListener, Context context)`
 
 `EMVTransactionListener` is the callback interface of the `EMVTransaction` object. It must be implemented by the merchant application.
-
+```
     public interface EMVTransactionListener {
       void onEMVTransactionSuccessful(Result result);
       void onEMVReadError(EMVErrorCode emvError);
       void onEMVTransactionError(Result result, EMVErrorCode emvError);
     }
+```
 
 ## Responses
 
@@ -69,7 +79,8 @@ The transaction was sent to the server, but the server returned an error. For ex
 
 An error occurred in collecting the EMV encrypted BLOB (Binary Large Object) from the reader. One of the following error codes is returned.
 
-`// EMV ERROR Codes
+```
+// EMV ERROR Codes
 EMVErrorCode {
     UNKNOWN(0),
     TRANSACTION_CANCELED(1),
@@ -81,7 +92,8 @@ EMVErrorCode {
     TRANSACTION_TERMINATED(7),
     TRANSACTION_DECLINED(8),
     UNKNOWN_READER_ERROR(9);
-}`
+}
+```
 
 
 ## Configuring the UI
@@ -117,7 +129,9 @@ The merchant application must define a drawable. SDK supports state list drawabl
 ## Non-EMV Transaction Processing
 
 The SDK supports the following transaction types that can be posted to Authorize.Net gateway:
-`/**
+
+```
+/**
  * The credit card transaction types supported by the payment gateway.
  */
 public enum TransactionType {
@@ -129,13 +143,19 @@ public enum TransactionType {
 	UNLINKED_CREDIT("CREDIT", "refundTransaction", "profileTransRefund"),
 	VOID("VOID", "voidTransaction", "profileTransVoid"),
 	CASH("CASH", "cash", "profileTransCash");
-}`
+}
+```
 
 Code sample for posting non-EMV transaction:
-`net.authorize.aim.Transaction transaction = Transaction.createTransaction(merchant, TransactionType.AUTH_CAPTURE, new BigDecimal(1.0));
+
+```
+net.authorize.aim.Transaction transaction = Transaction.createTransaction(merchant, TransactionType.AUTH_CAPTURE, new BigDecimal(1.0));
 net.authorize.aim.Result result = (net.authorize.aim.Result)merchant.postTransaction(transaction);
-`
+```
 to use other transaction type, simply replace `TransactionType.AUTH_CAPTURE` with the type of transaction you want.
+For Non-EMV transaction processing, there will be no UI provided by the SDK, client application is expected to build their own layout and display the response/error message properly.
+
+Fore more details on the supported API call accepted by Authorize.Net gateway, please refer to our [Authorize.Net API Documentation](http://developer.authorize.net/api/reference/).
 
 ## Error Codes
 
@@ -151,3 +171,4 @@ Field Order | Response Code | Response Reason Code | Text
 3 | 2 | 360	| An error occurred during the decryption of the EMV data.
 3 | 2 | 361	| The EMV version is invalid.
 3 | 2 | 362	| x_emv_version is required.
+
